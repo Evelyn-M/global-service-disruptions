@@ -19,122 +19,8 @@ import matplotlib.pyplot as plt
 import matplotlib.colors as colors
 from matplotlib.colors import ListedColormap
 
-# =============================================================================
-# Util functions
-# =============================================================================
-
-def load_dict(path_dict):
-    # load any dict saved as pkl
-    with open(path_dict, 'rb') as stats_dict:
-         stats_dict = pickle.load(stats_dict)
-    return stats_dict
-
-def save_dict(dict_var, save_path):
-    # save any dict as pkl
-    with open(save_path, 'wb') as f:
-        pickle.dump(dict_var, f) 
-        
-def load_gdf_dict(path_cntry_folder, haz_type, valid_events):
-    # get all result dataframes filepaths
-    if haz_type == 'TC':
-        paths_result_files = [file for file in glob.glob(path_cntry_folder +'cascade_results*') 
-                              if not 'DFO' in file]
-        # select only result files that are still in valid hazard event selection
-        paths_valid_resfiles = [path for path in paths_result_files 
-                                if path.split('_')[-1] in valid_events]
-        
-    elif haz_type == 'FL':
-        paths_result_files = glob.glob(path_cntry_folder + 'cascade_results_DFO*')
-        # select only result files that are still in valid hazard event selection
-        paths_valid_resfiles = [path for path in paths_result_files 
-                                if 'DFO_'+ path.split('_')[-1] in valid_events]
-    elif haz_type == 'RF':
-        paths_result_files = [file for file in glob.glob(path_cntry_folder +'cascade_results*') 
-                              if not 'DFO' in file]
-        # select only result files that are still in valid hazard event selection
-        paths_valid_resfiles = [path for path in paths_result_files 
-                                if path.split('_')[-1] in valid_events]
-    # move old files for good
-    paths_invalid_resfiles = set(paths_result_files).difference(paths_valid_resfiles)
-    for path in paths_invalid_resfiles:
-        new_path = path_cntry_folder+f"old/cascade_results_{path.split('_')[-1]}"
-        os.rename(path, new_path)
-        
-    # read in all result gdfs
-    gdf_list= []
-    name_list = []
-    for file_path in paths_valid_resfiles:
-        event_name = file_path.split('_')[-1] if haz_type in ['TC', 'RF'] else 'DFO_'+ file_path.split('_')[-1]
-        name_list.append(event_name)
-        gdf_list.append(gpd.read_feather(file_path)) 
-    # make dict
-    return dict(zip(name_list, gdf_list))
-
-# =============================================================================
-# Event Pre-Selections
-# =============================================================================
-    
-def select_significant_events(path_cntry_folder, haz_type):
-    # get all result dataframes filepaths
-    if haz_type == 'TC':
-        paths_result_files = [file for file in glob.glob(path_cntry_folder +'cascade_results*') 
-                              if not 'DFO' in file]
-        # select only result files that are still in valid hazard event selection
-        paths_valid_resfiles = [path for path in paths_result_files 
-                                if path.split('_')[-1] in valid_events]
-        
-    elif haz_type == 'FL':
-        paths_result_files = glob.glob(path_cntry_folder + 'cascade_results_DFO*')
-        # select only result files that are still in valid hazard event selection
-        paths_valid_resfiles = [path for path in paths_result_files 
-                                if 'DFO_'+ path.split('_')[-1] in valid_events]
-    # move old files for good
-    paths_invalid_resfiles = set(paths_result_files).difference(paths_valid_resfiles)
-    for path in paths_invalid_resfiles:
-        new_path = path_cntry_folder+f"old/cascade_results_{path.split('_')[-1]}"
-        os.rename(path, new_path)
 
 
-# =============================================================================
-# Cascade State and Access State
-# =============================================================================
-
-def get_cascstate(gdf):
-    """
-    for infrastructure items. 0: functional state, 1: dysfunctional state, 
-    2: cascaded dysfunctional state
-    """
-    casc_state = [0]* len(gdf)
-    for i in range(len(gdf)):
-        if ((gdf.func_tot.iloc[i]==0) & (gdf.func_internal.iloc[i]==0)):
-            casc_state[i] = 1
-        elif ((gdf.func_tot.iloc[i] ==0) & (gdf.func_internal.iloc[i] >0)):
-            casc_state[i] = 2
-    return casc_state                                   
-
-def get_accessstates(gdf, node_gdf_orig):
-    """
-    1 - accessible, 0 - inaccessible from beginning on, -1 - disrupted due to 
-    disaster. Careful - Changes gdf entries!
-    """
-    
-    services = [colname for colname in gdf.columns if 'actual_supply_' in colname] 
-    for service in services:
-        serv_level = gdf[gdf.ci_type=='people'][service].values
-        serv_level_orig = node_gdf_orig[node_gdf_orig.ci_type=='people'][service].values
-        serv_level[(serv_level==0.) & (serv_level_orig==1.)]= -1.
-        gdf.loc[gdf.ci_type=='people', service] = serv_level
-    return gdf
- 
-def get_casc_and_access_states(gdf, gdf_nodes_orig, save_path=None):
-    """
-    re-calculate cascade-states for now, irrespective of whether it's been calculated.
-    """
-    gdf['casc_state'] = get_cascstate(gdf)
-    gdf = get_accessstates(gdf, gdf_nodes_orig)
-    if save_path is not None:
-        gdf.to_feather(save_path)
-    return gdf
 
 # =============================================================================
 # Adding up results
@@ -268,7 +154,6 @@ def destruction_rate_conversion(dict_gdfs):
         dicts_structimps[event_name] = dict_structimps
     return dicts_structimps
 
-
 # =============================================================================
 # Visualizing results
 # =============================================================================
@@ -308,24 +193,12 @@ def _two_slope_norm(vmin=-10, vcenter=0, vmax=1):
 #helper funcs
 
 def service_dict():
-    """
-    ci types as coded to ci types properly worded
-    """
     return {'power_line' : 'electricity',
            'celltower' : 'mobile communications',
            'health': 'healthcare facilities',
            'education' : 'educational facility',
            'road' : 'roads'}
 
-def service_dict2():
-    """
-    services as coded to services  properly worded
-    """
-    return {'actual_supply_power_line_people' : 'electricity',
-           'actual_supply_celltower_people' : 'mobile communications',
-           'actual_supply_health_people': 'healthcare',
-           'actual_supply_education_people' : 'education',
-           'actual_supply_road_people' : 'mobility'}
 
 def _get_extent(gdf):
     buffer_deg = 0.1
@@ -372,7 +245,7 @@ def service_cumimpact_plot(gdf_cumimpacts, save_path=None):
     f.subplots_adjust(bottom=0.05, top=0.95)  
                             
     if save_path:
-        plt.savefig(f'{save_path}'+f'service_disruptions_cum_{haz_type}.png', 
+        plt.savefig(f'{save_path}'+'service_disruptions_cum.png', 
                     format='png', dpi=300,
         bbox_inches=None, pad_inches=0.1,
         facecolor='auto', edgecolor='auto',
@@ -383,14 +256,14 @@ def plot_rank_correlation(ranklist, spearmanr_res, event_names, save_path=None):
     f, ax = plt.subplots(1, 1, figsize=(8,8))
     ax.scatter( ranklist[1], ranklist[0])
     plt.title("rank correlation ")
-    plt.xlabel("structural impact rank")
-    plt.ylabel("service disruption impact rank")
+    plt.ylabel("structural impact rank")
+    plt.xlabel("service disruption impact rank")
     plt.axline((min(ranklist[0])-1, min(ranklist[0])-1), slope=1)
     plt.text(min(ranklist[0]), max(ranklist[0]), f'Spearman rank corr. coeff.: {np.round(spearmanr_res[0], 3)}')
     for i, txt in enumerate(event_names):
         ax.annotate(txt, (ranklist[1][i]-1, ranklist[0][i]+0.3))
     if save_path is not None:
-        plt.savefig(f'{save_path}'+f'event_rankings_{haz_type}.png', 
+        plt.savefig(f'{save_path}'+'event_rankings.png', 
                     format='png', dpi=72,
         bbox_inches=None, pad_inches=0.1,
         facecolor='auto', edgecolor='auto',
@@ -414,8 +287,8 @@ def plot_relative_impacts_bars(imp_dict_relb, imp_dict_rela, save_path=None):
     
     relb_base = imp_dict_relb.pop('people')
     rela_base = imp_dict_rela.pop('people')
-    relb_vals = np.round(np.array(list(imp_dict_relb.values())),4)
-    rela_vals = np.round(np.array(list(imp_dict_rela.values())),4)
+    relb_vals = np.round(np.array(list(imp_dict_relb.values())),2)
+    rela_vals = np.round(np.array(list(imp_dict_rela.values())),2)
     
     labels = imp_dict_relb.keys()
     
@@ -432,11 +305,11 @@ def plot_relative_impacts_bars(imp_dict_relb, imp_dict_rela, save_path=None):
     ax2.plot([0.-width/2, 4+width/2], [rela_base, rela_base], "k--", linewidth=2)
     ax2.legend()
     ax2.bar_label(rects2, padding=3)
-    year_range = '1980-2020' if haz_type=='TC' else '2002-2018'
-    f.suptitle( f"Average relative service disruptions from {haz_type}s, {cntry}, {year_range}",  fontsize=16)
+
+    f.suptitle( f"Average relative service disruptions from {haz_type}s, {state} ({cntry}), 1980-2020",  fontsize=16)
     f.tight_layout()
     if save_path is not None:
-        plt.savefig(f'{save_path}'+f'rel_serv_impacts_bars_{haz_type}.png', 
+        plt.savefig(f'{save_path}'+'rel_serv_impacts_bars.png', 
                     format='png', dpi=72,
         bbox_inches=None, pad_inches=0.1,
         facecolor='auto', edgecolor='auto',
@@ -456,20 +329,19 @@ def plot_total_impacts_bars(imp_tot_dict, save_path=None):
     ax1.set_ylabel('Basic Service Type')
     ax1.set_yticks(y, labels)
     ax1.legend()
-    ax1.bar_label(rects1, labels=["{:,}".format(int(num)) for num in imp_vals], padding=-5)
+    ax1.bar_label(rects1, padding=-5, fmt='%i')
     ax1.ticklabel_format(useOffset=False, style='plain', axis='x')
-    year_range = '1980-2020' if haz_type=='TC' else '2002-2018'
-    f.suptitle( f"Cumulative service disruptions from {haz_type}s, {cntry}, {year_range}",  fontsize=16)
+    f.suptitle( f"Cumulative service disruptions from {haz_type}s, {state} ({cntry}), 1980-2020",  fontsize=16)
     f.tight_layout()
     if save_path is not None:
-        plt.savefig(f'{save_path}'+f'tot_serv_impacts_bars_{haz_type}.png', 
+        plt.savefig(f'{save_path}'+'tot_serv_impacts_bars.png', 
                     format='png', dpi=72,
         bbox_inches=None, pad_inches=0.1,
         facecolor='auto', edgecolor='auto',
         backend=None)
     plt.show()
 
-def plot_worst_tc_tracks(worst_events, save_path=None):
+def plot_worst_event_tracks(worst_events, save_path=None):
     
     from climada.hazard import TCTracks
    
@@ -484,30 +356,13 @@ def plot_worst_tc_tracks(worst_events, save_path=None):
     ax.set_title('worst event tracks');
     ax.figure.tight_layout()
     if save_path is not None:
-        ax.figure.savefig(f'{save_path}'+'worst_events_TC.png', 
+        ax.figure.savefig(f'{save_path}'+'worst_event_tracks.png', 
                     format='png', dpi=150,
         bbox_inches=None, pad_inches=0.1,
         facecolor='auto', edgecolor='auto',
         backend=None)
 
-def plot_worst_floods(worst_events, path_cntry_folder, save_path=None):
-    
-    from climada.hazard import Hazard
-    
-    path_haz = path_cntry_folder+f'flood_{iso3}.hdf5'
-    hazards = Hazard('FL').from_hdf5(path_haz)
-    hazards = hazards.select(event_names=worst_events)
 
-    ax = hazards.plot_intensity(0)
-    ax.set_title(f'Worst flood events {iso3}');
-    ax.figure.tight_layout()
-    if save_path is not None:
-        ax.figure.savefig(f'{save_path}'+'worst_events_FL.png', 
-                    format='png', dpi=150,
-        bbox_inches=None, pad_inches=0.1,
-        facecolor='auto', edgecolor='auto',
-        backend=None)
-        
 # =============================================================================
 # Compute results
 # =============================================================================
@@ -528,35 +383,40 @@ if __name__ == '__main__':
 
     # Variable definitions
     cntry = sys.argv[1]
-    haz_type = sys.argv[2]
+    state = sys.argv[2]
+    haz_type = sys.argv[3]
     iso3 = u_coords.country_to_iso(cntry)
 
     # paths
     PATH_ROOT = '/cluster/work/climate/evelynm/nw_outputs/'
     path_cntry_folder = PATH_ROOT+f'{iso3}/'
-    path_save_plots = path_cntry_folder+'plots/'
-    path_nodes = path_cntry_folder+'cis_nw_nodes'
-    path_event_stats = path_cntry_folder+f'service_stats_{haz_type}_{iso3}.pkl'
-    path_base_stats = path_cntry_folder+f'base_stats_{iso3}.pkl'
+    path_state_folder = path_cntry_folder+f'{state}/'
+    path_edges  = f'{path_state_folder}/cis_nw_edges'
+    path_nodes = f'{path_state_folder}/cis_nw_nodes'
+    path_save = path_state_folder    
+    path_save_plots = path_state_folder+'plots/'
+    path_event_stats = path_state_folder+f'service_stats_{haz_type}_{iso3}_{state}.pkl'
+    path_base_stats = path_state_folder+f'base_stats_{iso3}_{state}.pkl'
+    
     if not os.path.exists(path_save_plots):
         os.makedirs(path_save_plots)
-    if not os.path.exists(path_cntry_folder+'old/'):
-        os.makedirs(path_cntry_folder+'old/')
+    if not os.path.exists(path_state_folder+'old/'):
+        os.makedirs(path_state_folder+'old/')
 
     #load files 
     gdf_nodes_orig = gpd.read_feather(path_nodes)
     base_stat_dict = load_dict(path_base_stats)
     base_stat_dict['people'] = 0
     event_stat_dict = load_dict(path_event_stats)
-    dict_gdfs = load_gdf_dict(path_cntry_folder, haz_type, valid_events=list(event_stat_dict.keys()))
+    dict_gdfs = load_gdf_dict(path_state_folder, haz_type, valid_events=list(event_stat_dict.keys()))
     
     # conversions
     access_rate_dict = access_rate_conversion(base_stat_dict, gdf_nodes_orig, abs_num=False)
     access_num_dict = access_rate_conversion(base_stat_dict, gdf_nodes_orig, abs_num=True)
     disr_rate_dict = disruption_rate_conversion(event_stat_dict, access_num_dict)
-    save_dict(disr_rate_dict, path_cntry_folder+f'disruption_rates_{iso3}_{haz_type}.pkl')
+    save_dict(disr_rate_dict, path_state_folder+f'disruption_rates_{iso3}_{state}_{haz_type}.pkl')
     destruction_rate_dict = destruction_rate_conversion(dict_gdfs)
-    save_dict(destruction_rate_dict, path_cntry_folder+f'destruction_rates_{iso3}_{haz_type}.pkl')
+    save_dict(destruction_rate_dict, path_state_folder+f'destruction_rates_{iso3}_{state}_{haz_type}.pkl')
 
     # analysis
     spearmanr_res, ranklist = compare_impact_rankings(disr_rate_dict, destruction_rate_dict)
@@ -564,8 +424,7 @@ if __name__ == '__main__':
 
     # aggregating event results
     for key, gdf in dict_gdfs.items():
-        save_path = path_cntry_folder + f'cascade_results_{key}'
-        
+        save_path = path_state_folder + f'cascade_results_{key}'
         if ((os.stat(save_path).st_mtime > os.stat(path_nodes).st_mtime) & 
             ('casc_state' in gdf.columns)):
             print('Cascade and access analysis was already performed. Aborting')
@@ -575,37 +434,32 @@ if __name__ == '__main__':
 
     gdf_summed = sum_impacts(
         [gdf for gdf in dict_gdfs.values()], 
-        save_path=path_cntry_folder+f'summed_impacts_{haz_type}_{iso3}.csv')
+        save_path=path_state_folder+f'summed_impacts_{haz_type}_{iso3}_{state}.csv')
 
     gdf_summed_popweighted = sum_impacts_popweighted(
         gdf_summed, 
-        save_path=path_cntry_folder+f'summed_pop_impacts_{haz_type}_{iso3}.csv')
+        save_path=path_state_folder+f'summed_pop_impacts_{haz_type}_{iso3}_{state}.csv')
 
     total_imps = get_total_imps(event_stat_dict)
-    save_dict(total_imps, path_cntry_folder+f'total_service_disruptions_{iso3}_{haz_type}.pkl')
+    save_dict(total_imps, path_state_folder+f'total_service_disruptions_{iso3}_{haz_type}_{state}.pkl')
     
     # Impacts relative to directly affected
     total_imps_rela = {key : total_imps[key]/total_imps['people'] for key in total_imps.keys()}
 
     # Impacts relative to base population with respective type of service access
-    total_imps_relb={}
-    for variable, service in service_dict2().items():
-        total_imps_relb[service] = gdf_summed_popweighted[gdf_summed_popweighted[variable]<0][variable].sum()/(
-    gdf_summed_popweighted[(gdf_summed_popweighted['imp_dir']<0) & (gdf_summed_popweighted[variable]!=0)][variable].sum())
-        total_imps_relb['people']=1
+    total_imps_relb = {key : total_imps[key]/(access_num_dict[key]*len(disr_rate_dict))
+                        for key in total_imps.keys()}
 
     plot_relative_impacts_bars(total_imps_relb, total_imps_rela, save_path=path_save_plots)
+
     service_cumimpact_plot(gdf_summed, save_path=path_save_plots)
     
     worst_events_s = [worst[1] for worst in get_worst_events(disr_rate_dict, n_min=int(3), mode='service')]
     worst_events_f = [worst[1] for worst in get_worst_events(destruction_rate_dict, n_min=int(3), mode='functionality')] 
-    if haz_type=='TC':
-        plot_worst_tc_tracks(worst_events_s, save_path=path_save_plots)
-    elif haz_type=='FL':
-        plot_worst_floods(worst_events_s, path_cntry_folder, save_path=path_save_plots)
+    plot_worst_event_tracks(worst_events_s, save_path=path_save_plots)
     
     div_events = get_diverging_events(event_stat_dict, ranklist)
-    
+
     plot_total_impacts_bars(total_imps, save_path=path_save_plots)
     
     # =============================================================================
@@ -622,28 +476,23 @@ if __name__ == '__main__':
     
     path_root = f'countries/{iso3}/' 
     #change this according to where it is called from - now expects .tex file & .png files in same folder countries/iso3/ 
-    path_imp_cum_plot = path_root+f'service_disruptions_cum_{haz_type}.png'
-    path_imp_tot_plot = path_root+f'tot_serv_impacts_bars_{haz_type}.png'
-    path_rankstats = path_root+f'event_rankings_{haz_type}.png'
-    path_cum_relimpacts = path_root+f'rel_serv_impacts_bars_{haz_type}.png'
+    path_imp_cum_plot = path_root+'service_disruptions_cum.png'
+    path_imp_tot_plot = path_root+'tot_serv_impacts_bars.png'
+    path_rankstats = path_root+'event_rankings.png'
+    path_cum_relimpacts = path_root+'rel_serv_impacts_bars.png'
     worst_event_header_s = ['Event Name']
     worst_event_header_s.extend(list(base_stat_dict.keys()))
     worst_event_header_f = ['Event Name']
     worst_event_header_f.extend(list(list(destruction_rate_dict.values())[0].keys()))
-    path_worst_event_plot = path_root+f'worst_events_{haz_type}.png'
+    path_worst_event_plot = path_root+'worst_event_tracks.png'
     
-    year_range = '1980-2020' 
-    if haz_type=='FL':
-        year_range = '2002-2018'
-    elif haz_type=='RF':
-        year_range = '1971-2005'
     
     geometry_options = {"tmargin": "2cm", "lmargin": "2cm", "rmargin": "2cm"}
     doc = Document(geometry_options=geometry_options)
     
     # Add Heading
     with doc.create(MiniPage(align='c')):
-        doc.append(LargeText(bold(f"Summary Output for {haz_type}s, {cntry}, {year_range}")))
+        doc.append(LargeText(bold(f"Summary Output for {haz_type}s, {state} ({cntry}), 1980-2020")))
         doc.append(LineBreak())
             
     with doc.create(Section('Base case: Access rates statistics')):
@@ -659,18 +508,18 @@ if __name__ == '__main__':
     with doc.create(Section('Average service disruption impacts')):
         with doc.create(Figure(position='h!')) as imp_pic:
             imp_pic.add_image(path_cum_relimpacts, width='350px')
-            imp_pic.add_caption(f'Relative service disruptions from {haz_type} {year_range}, {cntry}')
+            imp_pic.add_caption(f'Relative service disruptions from {haz_type} 1980 - 2020, {state} ({cntry})')
 
     with doc.create(Section('Cumulative service disruption impacts')): 
         doc.append(f'Number of {haz_type} events: {len(disr_rate_dict)}')
         
         with doc.create(Figure(position='h!')) as imp_pic:
             imp_pic.add_image(path_imp_tot_plot, width='250px')
-            imp_pic.add_caption(f'Service disruptions from {haz_type} {year_range}, {cntry}')
+            imp_pic.add_caption(f'Service disruptions from {haz_type} 1980 - 2020, {state} ({cntry})')
             
         with doc.create(Figure(position='h!')) as imp_pic:
             imp_pic.add_image(path_imp_cum_plot, width='550px')
-            imp_pic.add_caption(f'Spatial maps of service disruptions from {haz_type} {year_range}, {cntry}')
+            imp_pic.add_caption(f'Spatial maps of service disruptions from {haz_type} 1980 - 2020, {state} ({cntry})')
             
     with doc.create(Tabular('llllll')) as table:
             table.add_empty_row()
@@ -712,7 +561,7 @@ if __name__ == '__main__':
 
             with doc.create(Figure(position='h!')) as imp_pic:
                 imp_pic.add_image(path_worst_event_plot, width='350px')
-                imp_pic.add_caption(f'Worst {haz_type} events, {cntry}')
+                imp_pic.add_caption(f'Worst {haz_type} events, {state} ({cntry})')
 
 
             with doc.create(Subsection('Event ranks comparison')):
@@ -726,4 +575,4 @@ if __name__ == '__main__':
                     doc.append(LineBreak())
                 
 
-    doc.generate_tex(filepath=path_cntry_folder+f'summary_pages_{haz_type}_{iso3}')
+    doc.generate_tex(filepath=path_state_folder+f'summary_pages_{haz_type}_{iso3}_{state}')
