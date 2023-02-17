@@ -48,7 +48,12 @@ def load_gdf_dict(path_cntry_folder, haz_type, valid_events):
         # select only result files that are still in valid hazard event selection
         paths_valid_resfiles = [path for path in paths_result_files 
                                 if 'DFO_'+ path.split('_')[-1] in valid_events]
-    
+    elif haz_type == 'RF':
+        paths_result_files = [file for file in glob.glob(path_cntry_folder +'cascade_results*') 
+                              if not 'DFO' in file]
+        # select only result files that are still in valid hazard event selection
+        paths_valid_resfiles = [path for path in paths_result_files 
+                                if path.split('_')[-1] in valid_events]
     # move old files for good
     paths_invalid_resfiles = set(paths_result_files).difference(paths_valid_resfiles)
     for path in paths_invalid_resfiles:
@@ -59,11 +64,36 @@ def load_gdf_dict(path_cntry_folder, haz_type, valid_events):
     gdf_list= []
     name_list = []
     for file_path in paths_valid_resfiles:
-        event_name = file_path.split('_')[-1] if haz_type=='TC' else 'DFO_'+ file_path.split('_')[-1]
+        event_name = file_path.split('_')[-1] if haz_type in ['TC', 'RF'] else 'DFO_'+ file_path.split('_')[-1]
         name_list.append(event_name)
         gdf_list.append(gpd.read_feather(file_path)) 
     # make dict
     return dict(zip(name_list, gdf_list))
+
+# =============================================================================
+# Event Pre-Selections
+# =============================================================================
+    
+def select_significant_events(path_cntry_folder, haz_type):
+    # get all result dataframes filepaths
+    if haz_type == 'TC':
+        paths_result_files = [file for file in glob.glob(path_cntry_folder +'cascade_results*') 
+                              if not 'DFO' in file]
+        # select only result files that are still in valid hazard event selection
+        paths_valid_resfiles = [path for path in paths_result_files 
+                                if path.split('_')[-1] in valid_events]
+        
+    elif haz_type == 'FL':
+        paths_result_files = glob.glob(path_cntry_folder + 'cascade_results_DFO*')
+        # select only result files that are still in valid hazard event selection
+        paths_valid_resfiles = [path for path in paths_result_files 
+                                if 'DFO_'+ path.split('_')[-1] in valid_events]
+    # move old files for good
+    paths_invalid_resfiles = set(paths_result_files).difference(paths_valid_resfiles)
+    for path in paths_invalid_resfiles:
+        new_path = path_cntry_folder+f"old/cascade_results_{path.split('_')[-1]}"
+        os.rename(path, new_path)
+
 
 # =============================================================================
 # Cascade State and Access State
@@ -237,6 +267,7 @@ def destruction_rate_conversion(dict_gdfs):
                                                  1)
         dicts_structimps[event_name] = dict_structimps
     return dicts_structimps
+
 
 # =============================================================================
 # Visualizing results
