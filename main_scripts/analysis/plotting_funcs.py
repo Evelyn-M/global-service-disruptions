@@ -125,6 +125,7 @@ def plot_rank_correlation(ranklist, spearmanr_res, event_names, haz_type, save_p
     plt.show()
 
 
+
 def casc_factor_boxplots(df_factor_c, df_factor_b, haz_type, save_path=None):
     """
     make boxplots for failure cascade factors of basic services,
@@ -166,8 +167,10 @@ def casc_factor_boxplots(df_factor_c, df_factor_b, haz_type, save_path=None):
         ax1.text(i+0.8, facc_med[i]+0.2, '%.2f' % facc_med[i], 
                  verticalalignment='center', fontsize=16)
     
-    ax1.set_ylim([0, 9])
-    ax1b.set_ylim([facc_max-5, facc_max+1])
+    ax1_ylim = np.nanmax([9, np.max(np.percentile(df_factor_c.values, 90, axis=1))])
+    ax1.set_ylim([0, ax1_ylim])
+    ax1b.set_ylim([np.max([0, facc_max-5]), np.max([ax1_ylim, facc_max+1])])
+    
     bplot_b = df_factor_b.iloc[:-1,:].T.boxplot(ax=ax2, grid=False,
                                                 patch_artist=True, return_type='both',
                                                 medianprops = dict(linestyle='-', linewidth=2, color='k'),
@@ -181,8 +184,10 @@ def casc_factor_boxplots(df_factor_c, df_factor_b, haz_type, save_path=None):
                  verticalalignment='center', fontsize=16)
         
     ax2.set_ylabel('Spatial Cascade Factor', fontsize=16)
-    ax2.set_ylim([1, 10])
-    ax2b.set_ylim([facb_max-5, facb_max+1])
+    
+    ax2_ylim = np.nanmax([10, np.max(np.percentile(df_factor_b.values, 90, axis=1))])
+    ax2.set_ylim([1, ax2_ylim])
+    ax2b.set_ylim([np.max([1, facb_max-5]), np.max([ax2_ylim, facb_max+1])])
     
     ax1.set_xticks([])
     ax1.spines['top'].set_visible(False)

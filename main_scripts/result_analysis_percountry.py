@@ -121,7 +121,7 @@ if __name__ == '__main__':
     for event_id, imp_gdf in dict_gdfs.items():
         perevent_factor_c[event_id] = {}
         imp_gdf = imp_gdf[imp_gdf.ci_type=='people']
-        for variable, service in af.service_dict2().items():
+        for variable, service in af.service_dict().items():
             lost_service = imp_gdf[imp_gdf[variable]<0]['counts'].sum()
             # has or had service, in directly affected area
             had_service_affected = imp_gdf[(imp_gdf['imp_dir']>0) & (imp_gdf[variable]!=0)]['counts'].sum()
@@ -129,10 +129,11 @@ if __name__ == '__main__':
             if lost_service==0:
                 perevent_factor_c[event_id][service] = 0
         perevent_factor_c[event_id]['population'] = imp_gdf[(imp_gdf['imp_dir']>0)]['counts'].sum()/imp_gdf['counts'].sum()
+    
     # convert to dataframe    
     df_factor_c = pd.DataFrame.from_dict(perevent_factor_c)
     df_factor_c['median'] = df_factor_c.apply(lambda row: np.nanmedian(row.values), axis=1)    
-    df_factor_c.to_csv(path_cntry_folder+f'perevent_factor_c_{iso3}_{haz_type}.pkl')
+    df_factor_c.to_csv(path_cntry_folder+f'perevent_factor_c_{iso3}_{haz_type}.csv')
 
 
     # Factor B per event  & median (pop without service / pop without service in dir. aff. region)
@@ -141,7 +142,7 @@ if __name__ == '__main__':
     for event_id, imp_gdf in dict_gdfs.items():
         perevent_factor_b[event_id] = {}
         imp_gdf = imp_gdf[imp_gdf.ci_type=='people']
-        for variable, service in af.service_dict2().items():
+        for variable, service in af.service_dict().items():
             # lost service anywhere
             lost_service = imp_gdf[imp_gdf[variable]<0]['counts'].sum()
             # lost service in directly affected area
@@ -153,7 +154,7 @@ if __name__ == '__main__':
     # convert to dataframe    
     df_factor_b = pd.DataFrame.from_dict(perevent_factor_b)
     df_factor_b['median'] = df_factor_b.apply(lambda row: np.nanmedian(row.values), axis=1)    
-    df_factor_b.to_csv(path_cntry_folder+f'perevent_factor_b_{iso3}_{haz_type}.pkl')
+    df_factor_b.to_csv(path_cntry_folder+f'perevent_factor_b_{iso3}_{haz_type}.csv')
     
     
     # overview plots cumulative services (summary and spatially explicit)

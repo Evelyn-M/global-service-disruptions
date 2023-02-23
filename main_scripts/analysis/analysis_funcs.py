@@ -21,7 +21,7 @@ LOGGER.setLevel('INFO')
 # =============================================================================
 # Constants
 # =============================================================================
-def service_dict():
+def cinames_dict():
     """
     ci types as coded to ci types properly worded
     """
@@ -31,11 +31,12 @@ def service_dict():
            'education' : 'educational facility',
            'road' : 'roads'}
 
-def service_dict2():
+def service_dict():
     """service supply variables from raw output 
-    to basic service names"""
+    to proper basic service names
+    """
     return {'actual_supply_power_line_people' : 'electricity',
-           'actual_supply_celltower_people' : 'mobile /n communications',
+           'actual_supply_celltower_people' : 'mobile communications',
            'actual_supply_health_people': 'healthcare',
            'actual_supply_education_people' : 'education',
            'actual_supply_road_people' : 'mobility'}
