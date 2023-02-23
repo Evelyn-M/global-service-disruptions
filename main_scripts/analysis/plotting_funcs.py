@@ -88,7 +88,7 @@ def service_cumimpact_plot(gdf_cumimpacts, haz_type, save_path=None):
         cb.set_ticks(tick_list)
         #plt.show()
         if service != 'imp_dir':
-            ax.set_title(f'Disruptions in access to {af.service_dict()[service[14:-7]]}', 
+            ax.set_title(f'Disruptions in access to {af.cinames_dict()[service[14:-7]]}', 
                          weight='bold', fontsize=12) 
         else:
             ax.set_title('Direct impact pattern', weight='bold', fontsize=12) 
@@ -169,7 +169,7 @@ def casc_factor_boxplots(df_factor_c, df_factor_b, haz_type, save_path=None):
     
     ax1_ylim = np.nanmax([9, np.max(np.percentile(df_factor_c.values, 90, axis=1))])
     ax1.set_ylim([0, ax1_ylim])
-    ax1b.set_ylim([np.max([0, facc_max-5]), np.max([ax1_ylim, facc_max+1])])
+    ax1b.set_ylim([np.max([9, facc_max-5]), np.max([10, facc_max+1])])
     
     bplot_b = df_factor_b.iloc[:-1,:].T.boxplot(ax=ax2, grid=False,
                                                 patch_artist=True, return_type='both',
@@ -187,7 +187,7 @@ def casc_factor_boxplots(df_factor_c, df_factor_b, haz_type, save_path=None):
     
     ax2_ylim = np.nanmax([10, np.max(np.percentile(df_factor_b.values, 90, axis=1))])
     ax2.set_ylim([1, ax2_ylim])
-    ax2b.set_ylim([np.max([1, facb_max-5]), np.max([ax2_ylim, facb_max+1])])
+    ax2b.set_ylim([np.max([10, facb_max-5]), np.max([11, facb_max+1])])
     
     ax1.set_xticks([])
     ax1.spines['top'].set_visible(False)
