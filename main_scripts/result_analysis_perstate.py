@@ -42,7 +42,7 @@ if __name__ == '__main__':
     iso3 = u_coords.country_to_iso(cntry)
 
     # paths
-    PATH_ROOT = '/Users/evelynm/Documents/WCR/3_PhD/1_coding_stuff/network_stuff/climada-networks-overview/p2/test_data/' # '/cluster/work/climate/evelynm/nw_outputs/'
+    PATH_ROOT = '/cluster/work/climate/evelynm/nw_outputs/'
     path_cntry_folder = PATH_ROOT+f'{iso3}/'
     path_state_folder = path_cntry_folder+f'{state}/'
     path_nodes = f'{path_state_folder}/cis_nw_nodes'

@@ -167,7 +167,7 @@ def casc_factor_boxplots(df_factor_c, df_factor_b, haz_type, save_path=None):
         ax1.text(i+0.8, facc_med[i]+0.2, '%.2f' % facc_med[i], 
                  verticalalignment='center', fontsize=16)
     
-    ax1_ylim = np.nanmax([9, np.max(np.percentile(df_factor_c.values, 90, axis=1))])
+    ax1_ylim = np.nanmax([9, np.nanmax(np.percentile(df_factor_c.values, 90, axis=1))])
     ax1.set_ylim([0, ax1_ylim])
     ax1b.set_ylim([np.max([9, facc_max-5]), np.max([10, facc_max+1])])
     
@@ -185,7 +185,7 @@ def casc_factor_boxplots(df_factor_c, df_factor_b, haz_type, save_path=None):
         
     ax2.set_ylabel('Spatial Cascade Factor', fontsize=16)
     
-    ax2_ylim = np.nanmax([10, np.max(np.percentile(df_factor_b.values, 90, axis=1))])
+    ax2_ylim = np.nanmax([10, np.nanmax(np.percentile(df_factor_b.values, 90, axis=1))])
     ax2.set_ylim([1, ax2_ylim])
     ax2b.set_ylim([np.max([10, facb_max-5]), np.max([11, facb_max+1])])
     

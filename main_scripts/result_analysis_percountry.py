@@ -39,7 +39,7 @@ if __name__ == '__main__':
     iso3 = u_coords.country_to_iso(cntry)
 
     # paths
-    PATH_ROOT = '/Users/evelynm/Documents/WCR/3_PhD/1_coding_stuff/network_stuff/climada-networks-overview/p2/test_data/' #'/cluster/work/climate/evelynm/nw_outputs/'
+    PATH_ROOT = '/cluster/work/climate/evelynm/nw_outputs/'
     path_cntry_folder = PATH_ROOT+f'{iso3}/'
     path_save_plots = path_cntry_folder+'plots/'
     path_nodes = path_cntry_folder+'cis_nw_nodes'
@@ -60,6 +60,15 @@ if __name__ == '__main__':
     base_stat_dict['people'] = 0
     event_stat_dict = af.load_dict(path_event_stats)
     
+    # amend forgotten people stats
+    if 'people' not in list(event_stat_dict.values())[0].keys():
+        dict_gdfs = af.load_gdf_dict(path_cntry_folder, 
+                                     haz_type, 
+                                     valid_events=list(event_stat_dict.keys()))
+        for event_id, stats_dict in event_stat_dict.items():
+            event_stat_dict[event_id]['people'] = dict_gdfs[event_id][dict_gdfs[event_id].ci_type=='people'].imp_dir.sum()
+
+    af.save_dict(event_stat_dict, path_event_stats)
     # create summary dictionaries for basic service attainment
     access_rate_dict = af.access_rate_conversion(
         base_stat_dict, gdf_nodes_orig, abs_num=False)
@@ -104,10 +113,14 @@ if __name__ == '__main__':
         save_path = path_cntry_folder + f'cascade_results_{key}'
         dict_gdfs[key] = af.get_casc_and_access_states(gdf, gdf_nodes_orig, save_path=save_path)
 
-    gdf_summed = af.sum_impacts(
-        [gdf for gdf in dict_gdfs.values()], 
-        save_path=path_cntry_folder+f'summed_impacts_{haz_type}_{iso3}')
-
+    if len(dict_gdfs.keys())>1:
+        gdf_summed = af.sum_impacts(
+            [gdf for gdf in dict_gdfs.values()], 
+            save_path=path_cntry_folder+f'summed_impacts_{haz_type}_{iso3}')
+    else:
+        gdf_summed = list(dict_gdfs.values())[0]
+        gdf_summed = gdf_summed[gdf_summed.ci_type=='people'].iloc[:,3:]
+        
     gdf_summed_popweighted = af.sum_impacts_popweighted(
         gdf_summed, 
         save_path=path_cntry_folder+f'summed_pop_impacts_{haz_type}_{iso3}')
