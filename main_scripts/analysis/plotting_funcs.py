@@ -237,6 +237,144 @@ def casc_factor_boxplots(df_factor_c, df_factor_b, haz_type, save_path=None):
         backend=None)
     plt.show()
 
+def plot_cascfactor_boxplots(perevent_factor, factor_type, haz_type, save_path=None):
+    """
+    plot all cascade factors from a dataframe of many regions and many events
+    """ 
+    f, axes = plt.subplots(3,6, figsize=(20, 15),
+                          sharex=True, sharey=False)
+    
+    axes = axes.flatten()
+    my_cmap = plt.get_cmap("Set3") #
+    ylabel='Resilience Cascade Factor' if factor_type=='resilience' else 'Spatial Cascade Factor'
+    ax1_ylim_default = 5 if factor_type=='resilience' else 6 # np.max([4, fac_80])
+    ax1_ystart_default = 0 if factor_type=='resilience' else 1
+    
+    i=0
+    for iso3, casc_df in perevent_factor.items():
+        ax1 = axes.flatten()[i]
+
+        fac_med = casc_df['median'][:-1]
+        fac_max = np.nanmax(casc_df.values.flatten()[casc_df.values.flatten()!=np.inf])
+        fac_75 = np.nanmax(np.percentile(casc_df.values, 75, axis=1))
+        fac_50 = np.nanmax(np.percentile(casc_df.values, 50, axis=1))   
+        
+        labels = casc_df.index.values[:-1]
+
+        bplot = casc_df.iloc[:-1,:].T.boxplot(ax=ax1, grid=False,
+                                                    patch_artist=True, return_type='both',
+                                                    medianprops = dict(linestyle='-', linewidth=2, color='k'),
+                                                    whiskerprops=dict(linestyle='-', linewidth=1, color='k'),
+                                             flierprops=dict(marker='o', markerfacecolor='k', markersize=2))
+        ax1_ylim = ax1_ylim_default
+        ax1_ystart = ax1_ystart_default
+        ax1.set_xticks([])
+        ax1.set_yticks(np.arange(ax1_ylim+1))
+        ax1.set_ylim([ax1_ystart, ax1_ylim])
+        
+        for ind in range(len(fac_med)):
+            if fac_med[ind]< ax1_ylim:
+                ax1.text(ind+0.8, fac_med[ind]+0.2, '%.2f' % fac_med[ind], 
+                             verticalalignment='center', fontsize=10)
+        if fac_50 < (ax1_ylim-2.5):
+            ax1.set_title(f'{iso3}',y=1.0, pad=-14, fontsize=16)
+        
+        if fac_50 > ax1_ylim: # secondary axis
+            ax1_ylim = ax1_ylim-2 
+            ax1.set_yticks(np.arange(ax1_ylim+1))
+            ax1.spines['top'].set_visible(False)
+            ax1.set_ylim([ax1_ystart, ax1_ylim])
+            ax1.spines['top'].set_visible(False)
+            divider = make_axes_locatable(ax1)
+            
+            ax1b = divider.new_vertical(size="60%", pad=0.1)
+            f.add_axes(ax1b)
+            ax1b.set_ylim([np.max([fac_50-5, ax1_ylim+0.1]), fac_75+5])
+            bplot = casc_df.iloc[:-1,:].T.boxplot(ax=ax1b, grid=False,
+                                          patch_artist=True, return_type='both',
+                                          medianprops = dict(linestyle='-', linewidth=2, color='k'),
+                                          whiskerprops=dict(linestyle='-', linewidth=1, color='k'),
+                                          flierprops=dict(marker='o', markerfacecolor='k', markersize=2))
+
+            ax1b.set_xticks([])
+            ax1b.spines['bottom'].set_visible(False)
+            ax1b.set_title(f'{iso3}',y=1.0, pad=-14, fontsize=16)
+
+            d = .015  # how big to make the diagonal lines in axes coordinates
+            # arguments to pass to plot, just so we don't keep repeating them
+            kwargs = dict(transform=ax1b.transAxes, color='k', clip_on=False)
+            ax1b.plot((-d, +d), (-d, +d), **kwargs)        # top-left diagonal
+            ax1b.plot((1 - d, 1 + d), (-d, +d), **kwargs)  # top-right diagonal
+            kwargs.update(transform=ax1.transAxes)  # switch to the bottom axes
+            ax1.plot((-d, +d), (1 - d, 1 + d), **kwargs)  # bottom-left diagonal
+            ax1.plot((1 - d, 1 + d), (1 - d, 1 + d), **kwargs)  # bottom-right diagonal
+            
+        elif fac_75 > ax1_ylim: # secondary axis
+            ax1_ylim = ax1_ylim-1 
+            ax1.set_yticks(np.arange(ax1_ylim+1))
+            ax1.spines['top'].set_visible(False)
+            ax1.set_ylim([ax1_ystart, ax1_ylim])
+            ax1.spines['top'].set_visible(False)
+            divider = make_axes_locatable(ax1)
+            
+            ax1b = divider.new_vertical(size="25%", pad=0.1)
+            f.add_axes(ax1b)
+            ax1b.set_ylim([np.max([ax1_ylim+0.1, fac_75]), np.max([ax1_ylim+1, fac_max+1])])
+            casc_df.iloc[:-1,:].T.boxplot(ax=ax1b, grid=False,
+                                          patch_artist=True, return_type='both',
+                                          medianprops = dict(linestyle='-', linewidth=2, color='k'),
+                                          whiskerprops=dict(linestyle='-', linewidth=1, color='k'),
+                                          flierprops=dict(marker='o', markerfacecolor='k', markersize=2))
+
+            ax1b.set_xticks([])
+            ax1b.spines['bottom'].set_visible(False)
+            ax1b.set_title(f'{iso3}',y=1.0, pad=-14, fontsize=16)
+
+            d = .015  # how big to make the diagonal lines in axes coordinates
+            # arguments to pass to plot, just so we don't keep repeating them
+            kwargs = dict(transform=ax1b.transAxes, color='k', clip_on=False)
+            ax1b.plot((-d, +d), (-d, +d), **kwargs)        # top-left diagonal
+            ax1b.plot((1 - d, 1 + d), (-d, +d), **kwargs)  # top-right diagonal
+            kwargs.update(transform=ax1.transAxes)  # switch to the bottom axes
+            ax1.plot((-d, +d), (1 - d, 1 + d), **kwargs)  # bottom-left diagonal
+            ax1.plot((1 - d, 1 + d), (1 - d, 1 + d), **kwargs)  # bottom-right diagonal
+            
+        
+        if (i%6)==0:
+            ax1.set_ylabel(ylabel, fontsize=14)
+                
+        # fill with colors
+        colors = my_cmap.colors
+        for patch, whisk, med, color in zip(bplot[1]['boxes'],bplot[1]['whiskers'],bplot[1]['whiskers'], colors):
+            patch.set_facecolor(color)
+            patch.set_alpha(0.6)
+            patch.set_edgecolor('k') # or try 'black'
+            patch.set_linewidth(1)
+        
+        i +=1
+        
+    legend_elements = [Patch(facecolor=my_cmap.colors[i], alpha=0.6, edgecolor='k',
+                             label=list(labels)[i]) for i in range(len(labels))]
+    
+    f.legend(handles=legend_elements, frameon=False, fontsize=16,
+            bbox_to_anchor=(0.9, 0),
+            ncol=len(labels))  
+    
+    remainder=(len(perevent_factor.keys())%3)*-1
+    if remainder < 0:
+        for ax in axes[remainder:]:
+            ax.remove()
+    
+    if save_path is not None:
+        plt.savefig(f'{save_path}'+f'cascfactor_boxplots_allregs_{factor_type}_{haz_type}.png', 
+                        format='png', dpi=150,
+            bbox_inches=None, pad_inches=0.1,
+            facecolor='auto', edgecolor='auto',
+            backend=None)
+    plt.tight_layout()
+    plt.show()
+    
+
 def plot_relative_impacts_bars(imp_dict_relb, imp_dict_rela, haz_type, cntry,
                                save_path=None):
     """both in one
