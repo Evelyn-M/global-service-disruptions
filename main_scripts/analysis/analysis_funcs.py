@@ -13,6 +13,9 @@ import glob
 import os
 import copy
 import scipy
+import shapely
+
+from climada.util import coordinates as u_coords
 
 import logging
 LOGGER = logging.getLogger(__name__)
@@ -42,9 +45,20 @@ def service_dict():
            'actual_supply_road_people' : 'mobility'}
 
 def inc_class_dict():
-    return {'ATG': 1,
+    return {
+ 'ATG': 1,
+ 'BDI' : 4,
  'BGD': 4,
  'CUB': 2,
+ 'CHE' : 1,
+ 'CHL' : 1,
+ 'NLD' : 1,
+ 'GBR' : 1,
+ 'GRC' : 1,  
+ 'GEO' : 2,
+ 'TJK' : 3,
+ 'SRB' : 2,
+ 'HUN' : 2,
  'GTM': 2,
  'HTI': 4,
  'KHM': 3,
@@ -55,11 +69,45 @@ def inc_class_dict():
  'PHL': 3,
  'VNM': 3,
  'PRI': 1,
+ 'PAK' : 3,
+ 'URY' : 1,
  'USA Florida': 1,
  'USA Louisiana': 1,
  'USA Texas': 1,
  'CHN Fujian': 2,
  'CHN Hainan': 2}
+
+def region_dict():
+    return {'ATG': 'LAC',
+ 'BDI' : 'SSA',           
+ 'BGD': 'SA',
+ 'CUB': 'LAC',
+ 'CHL' : 'LAC',
+ 'CHE' : 'ECA',
+ 'NLD' : 'ECA',
+ 'GBR' : 'ECA',
+ 'GRC' : 'ECA',  
+ 'GEO' : 'ECA',
+ 'TJK' : 'ECA',
+ 'SRB' : 'ECA',
+ 'HUN' : 'ECA', 
+ 'PAK' : 'SA',
+ 'GTM': 'LAC',
+ 'HTI': 'LAC',
+ 'KHM': 'EAP',
+ 'LKA': 'SA',
+ 'MDG': 'SSA',
+ 'MEX': 'LAC',
+ 'MOZ': 'SSA',
+ 'PHL': 'EAP',
+ 'VNM': 'EAP',
+ 'PRI': 'LAC',
+ 'URY' : 'LAC',
+ 'USA Florida': 'NAM',
+ 'USA Louisiana': 'NAM',
+ 'USA Texas': 'NAM',
+ 'CHN Fujian': 'EAP',
+ 'CHN Hainan': 'EAP'}
 
 
 def pop_density_dict():
@@ -83,7 +131,7 @@ def pop_density_dict():
  'CHN Hainan': 276}
 
 # =============================================================================
-# Util functions
+# Util & loading functions
 # =============================================================================
 
 
@@ -136,7 +184,8 @@ def move_gdfs(path_cntry_folder, haz_type, valid_events=[], small_events=[]):
                 new_path = path_cntry_folder+f"small_events/cascade_results_DFO{path.split('_')[-1]}"
                 os.rename(path, new_path)
                 
-        paths_valid_resfiles.extend(paths_small_resfiles)        
+            paths_valid_resfiles.extend(paths_small_resfiles)        
+        
         paths_old_resfiles = set(paths_result_files).difference(
             paths_valid_resfiles)
         
@@ -178,6 +227,52 @@ def load_gdf_dict(path_cntry_folder, haz_type, valid_events):
     
     # make dict
     return dict(zip(name_list, gdf_list))
+
+def load_disr_rate_allregs(haz_type, path_root='/cluster/work/climate/evelynm/nw_outputs/'):
+    
+    disr_rate = {}
+    haz_iso_dict = {'TC' : ['ATG', 'BGD', 'CUB', 'GTM', 'HTI', 'KHM', 'LKA', 'MDG', 'MEX', 'MOZ',  'PHL', 'VNM', 'PRI'],
+                    'FL' : ['PHL', 'VNM', 'BGD','GRC', 'HUN', 'HTI', 'GBR', 'URY', 'MOZ', 'LKA', 'BDI', 'CUB', 'TJK', 'MDG', 'SRB', 'GTM', 'CHE', 'NLD', 'CHL', 'GEO']}
+    haz_state_dict = {'TC' : zip(['USA', 'USA', 'USA', 'CHN', 'CHN'], ['Florida', 'Louisiana', 'Texas', 'Fujian', 'Hainan']),
+                     'FL' : zip(['USA', 'USA','CHN'],['Florida', 'Texas', 'Fujian'])}
+
+    for iso3 in haz_iso_dict[haz_type]:
+        path_cntry_folder = path_root+f'{iso3}/'
+        disr_rate[iso3] = load_dict(path_cntry_folder+f'disruption_rates_{iso3}_{haz_type}.pkl')
+    for iso3, state in haz_state_dict[haz_type]:
+        path_cntry_folder = path_root+f'{iso3}/'
+        disr_rate[f'{iso3} {state}'] = load_dict(path_cntry_folder+f'{state}/disruption_rates_{iso3}_{state}_{haz_type}.pkl')   
+    return disr_rate
+
+def load_dest_rate_allregs(haz_type, path_root='/cluster/work/climate/evelynm/nw_outputs/'):
+    
+    dest_rate = {}
+    haz_iso_dict = {'TC' : ['ATG', 'BGD', 'CUB', 'GTM', 'HTI', 'KHM', 'LKA', 'MDG', 'MEX', 'MOZ',  'PHL', 'VNM', 'PRI'],
+                    'FL' : ['PHL', 'VNM', 'BGD', 'GRC', 'HUN', 'HTI', 'GBR', 'URY', 'MOZ', 'LKA', 'BDI', 'CUB', 'TJK', 'MDG', 'SRB', 'GTM', 'CHE', 'NLD', 'CHL', 'GEO']}
+    haz_state_dict = {'TC' : zip(['USA', 'USA', 'USA', 'CHN', 'CHN'], ['Florida', 'Louisiana', 'Texas', 'Fujian', 'Hainan']),
+                      'FL' : zip(['USA', 'USA','CHN'],['Florida', 'Texas', 'Fujian'])}
+    
+    for iso3 in haz_iso_dict[haz_type]:
+        path_cntry_folder = path_root+f'{iso3}/'
+        dest_rate[iso3] = load_dict(path_cntry_folder+f'destruction_rates_{iso3}_{haz_type}.pkl')
+    for iso3, state in haz_state_dict[haz_type]:
+        path_cntry_folder = path_root+f'{iso3}/'
+        dest_rate[f'{iso3} {state}'] = load_dict(path_cntry_folder+f'{state}/destruction_rates_{iso3}_{state}_{haz_type}.pkl')  
+    return dest_rate
+
+def iso_to_cntryshape(iso3):
+    
+    region_list = iso3.split(' ')
+    iso3 = region_list[0]
+    states, cntry_shape = u_coords.get_admin1_info([iso3])
+    
+    if len(region_list)>1:
+        state = region_list[1]
+        pos_state = np.where([state_dict['name_en']==state for state_dict in states[iso3]])[0][0]
+        cntry_shape = cntry_shape[iso3][pos_state]
+    else:
+        cntry_shape = shapely.ops.unary_union([shp for shp in cntry_shape[iso3]])
+    return cntry_shape
 
 # =============================================================================
 # Cascade State and Access State
@@ -374,4 +469,34 @@ def destruction_rate_conversion(dict_gdfs):
                                                  1)
         dicts_structimps[event_name] = dict_structimps
     return dicts_structimps
+
+
+def calc_infra_density(iso3, state=None):
+    path_nw_folder = '/cluster/work/climate/evelynm/nw_outputs/'+f'{iso3}/'
+    infra_density_dict = {}
+    if state:
+        path_nw_folder+=f'{state}/'
+    df_edges = gpd.read_feather(path_nw_folder+'cis_nw_edges')
+    df_nodes = gpd.read_feather(path_nw_folder+'cis_nw_nodes')
+    pop_count = df_nodes[df_nodes.ci_type=='people'].counts.sum()
+    
+    for ci_type in ['health', 'education', 'celltower', 'power_plant']:
+        infra_density_dict[ci_type] = len(df_nodes[df_nodes.ci_type==ci_type])/pop_count
+    for ci_type in ['power_line', 'road']:
+        infra_density_dict[ci_type] = df_edges[df_edges.ci_type=='power_line']['distance'].sum()/pop_count
+    return infra_density_dict
+
+def infra_density_df(region_keys, save_path=None):
+    infra_density_dict = {}
+    for key in region_keys:
+        try:
+            iso3, state = key.split(' ')
+        except ValueError:
+            iso3 = key
+            state = None
+        infra_density_dict[key] = calc_infra_density(iso3, state)
+    df_infra_density = pd.DataFrame.from_dict(infra_density_dict)
+    if save_path is not None:
+        df_infra_density.to_csv(save_path+'df_infra_density.csv')
+    return df_infra_density
 

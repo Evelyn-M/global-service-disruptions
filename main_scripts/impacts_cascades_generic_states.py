@@ -325,6 +325,25 @@ def get_selected_tcs_api(iso3, state_shape, start=START_STR, end=END_STR):
                 inten_selectors.append(event_id)
     tc = tc.select(event_id=inten_selectors)
     return tc    
+
+def get_selected_floods(iso3, state_shape, path_root):
+    """
+    select hazard events within state shape and with at least 5 nonzero pixels.
+    """
+    path_haz = path_root+f'/{iso3}/flood_{iso3}.hdf5'
+    hazards = Hazard('FL').from_hdf5(path_haz)
+    hazards = hazards.select(extent=(
+    state_shape.bounds[0],state_shape.bounds[2],
+    state_shape.bounds[1],state_shape.bounds[3]))
+    hazards.centroids.set_geometry_points()
+    inten_selectors = []
+    for event_id in hazards.event_id:
+        bools_0 = hazards.select(event_id=[event_id]).intensity>0
+        if bools_0.sum()>5:
+            bools_0 = np.array((bools_0).todense()).flatten()
+            if sum(hazards.centroids.geometry[bools_0].within(state_shape))>5:
+                inten_selectors.append(event_id)
+    return hazards.select(event_id=inten_selectors)        
         
 # =============================================================================
 # Impact & cascade calc funcs
@@ -532,8 +551,7 @@ if __name__ == '__main__':
 
     # LOAD HAZARD FILES
     if haz_type=='FL':
-        path_haz=path_save+f'flood_{iso3}.hdf5'
-        hazards = Hazard('FL').from_hdf5(path_haz)
+        hazards = get_selected_floods(iso3, state_shape, path_root)
         
     elif haz_type=='TC':
         hazards = get_selected_tcs_api(iso3, state_shape)

@@ -79,7 +79,7 @@ if __name__ == '__main__':
     disr_rate_dict = af.disruption_rate_conversion(
         event_stat_dict, access_num_dict)
     
-    cutoff_popimp = 0.001 if haz_type=='TC' else 0.0001
+    cutoff_popimp = 0.001 if haz_type=='TC' else 0
     drop_events = af.select_insignificant_events(disr_rate_dict, cutoff_popimp)
     
     small_disr_rate_dict = {}

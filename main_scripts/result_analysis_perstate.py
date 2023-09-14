@@ -75,7 +75,7 @@ if __name__ == '__main__':
     disr_rate_dict = af.disruption_rate_conversion(
         event_stat_dict, access_num_dict)
     
-    cutoff_popimp = 0.001 if haz_type=='TC' else 0.0001
+    cutoff_popimp = 0.001 if haz_type=='TC' else 0.00001
     drop_events = af.select_insignificant_events(disr_rate_dict, cutoff_popimp)
     
     small_disr_rate_dict = {}
@@ -176,9 +176,9 @@ if __name__ == '__main__':
     if haz_type=='TC':
         pf.plot_worst_tc_tracks(worst_events_s,
                                 save_path=path_save_plots)
-    elif haz_type=='FL':
-        pf.plot_worst_floods(worst_events_s, path_state_folder, iso3, 
-                             save_path=path_save_plots)
+    #elif haz_type=='FL':
+        #pf.plot_worst_floods(worst_events_s, path_cntry_folder, iso3, 
+        #                     save_path=path_save_plots)
     
     div_events = af.get_diverging_events(event_stat_dict, ranklist)
     
@@ -286,9 +286,10 @@ if __name__ == '__main__':
             doc.append(LineBreak())
             doc.append('Worst events with respect to direct (structural) damages. In % relative to total units.')
 
-            with doc.create(Figure(position='h!')) as imp_pic:
-                imp_pic.add_image(path_worst_event_plot, width='350px')
-                imp_pic.add_caption(f'Worst {haz_type} events, {state} ({cntry})')
+            if haz_type!='FL':
+                with doc.create(Figure(position='h!')) as imp_pic:
+                    imp_pic.add_image(path_worst_event_plot, width='350px')
+                    imp_pic.add_caption(f'Worst {haz_type} events, {state} ({cntry})')
 
 
             with doc.create(Subsection('Event ranks comparison')):
